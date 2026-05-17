@@ -1,1259 +1,518 @@
-import { useState, useEffect, useRef } from "react";
+"use client";
 
-const GOLD = "#D4AF37";
-const DEEP_GREEN = "#0a1f0e";
-const MID_GREEN = "#122918";
-const LIGHT_GOLD = "#F5D97A";
-const PALE_GOLD = "#fff8e1";
+import { useEffect, useRef, useState } from "react";
 
-/* ── tiny helpers ── */
-const useInView = (threshold = 0.15) => {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setVisible(true); },
-      { threshold }
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-  return [ref, visible];
-};
+const APK_DOWNLOAD_URL =
+  "https://drive.google.com/file/d/1GHYde28aROlW5ImIbVtEaqAQGfQsvpys/view?usp=sharing";
 
-/* ── countdown ── */
-const useCountdown = (target) => {
-  const calc = () => {
-    const diff = new Date(target) - new Date();
-    if (diff <= 0) return { d: 0, h: 0, m: 0, s: 0 };
-    return {
-      d: Math.floor(diff / 86400000),
-      h: Math.floor((diff % 86400000) / 3600000),
-      m: Math.floor((diff % 3600000) / 60000),
-      s: Math.floor((diff % 60000) / 1000),
-    };
-  };
-  const [time, setTime] = useState(calc);
-  useEffect(() => {
-    const t = setInterval(() => setTime(calc()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  return time;
-};
+const CASTES = [
+  "காவிட் டோல்", "கொரிவோல்", "பசலட்டோல்", "காலோல் (காலி)",
+  "தண்ணிரோல்", "சீரலோல்", "பானமோல்", "கோலோல்",
+  "பாசிமோல்", "மாட்டுங்கோல்", "பில்லோல்", "இதர பிரவிகள்",
+];
 
-/* ── floating particles ── */
-const Particles = () => {
-  const particles = Array.from({ length: 28 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 3 + 1,
-    dur: Math.random() * 12 + 8,
-    del: Math.random() * 6,
-  }));
-  return (
-    <div className="particles-layer">
-      {particles.map((p) => (
-        <span
-          key={p.id}
-          className="particle"
-          style={{
-            left: `${p.x}%`,
-            top: `${p.y}%`,
-            width: p.size,
-            height: p.size,
-            animationDuration: `${p.dur}s`,
-            animationDelay: `${p.del}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
+const VILLAGES = [
+  "நிலக்கோட்டை", "சத்தியமூர்த்தி நகர்", "கடசனேந்தல்", "எண்டப்புளி",
+  "சின்னமுப்பன்பட்டி", "சமுத்திரம்", "திருச்சுழி", "வாலிசெட்டிப்பட்டி",
+  "பெருமாள்புதூர்", "பார்த்தசாரதிபுரம்", "அரங்கூர்", "ஏரல்",
+  "தரவை", "தச்சநல்லுர்", "சென்றாம்பாளையம்", "லட்சுமிபுரம்",
+];
 
-/* ── section reveal wrapper ── */
-const Reveal = ({ children, delay = 0, className = "" }) => {
-  const [ref, vis] = useInView();
+const FEATURES = [
+  { icon: "💍", title: "Bride & Groom Registration", desc: "Complete profile with photos and personal details for seamless matchmaking." },
+  { icon: "🏘️", title: "Community Sub-Division", desc: "Select your exact sub-division for culturally aligned matches." },
+  { icon: "📍", title: "Village Details", desc: "Filter profiles by native village to find community-rooted matches." },
+  { icon: "📸", title: "Photo Upload", desc: "Upload and showcase profile photos securely within the community." },
+  { icon: "🔒", title: "Secure Contact", desc: "Privacy-first messaging keeps your personal info protected at all times." },
+  { icon: "✅", title: "Admin Verified", desc: "Every profile is reviewed and verified by trusted community admins." },
+];
+
+const STEPS = [
+  { step: "01", title: "Download the APK", desc: "Free download for all Android devices. No app store required." },
+  { step: "02", title: "Register Profile", desc: "Fill details, choose your community division and native village." },
+  { step: "03", title: "Admin Verification", desc: "Trusted admins review and verify your profile for authenticity." },
+  { step: "04", title: "Find Your Match", desc: "Browse verified profiles filtered by division and village — safely." },
+];
+
+// Fully deterministic — no Math.random
+const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
+  id: i,
+  delay: i * 0.5,
+  x: (i * 7.3) % 100,
+  size: 5 + (i % 4) * 3,
+  duration: 7 + (i % 4) + ((i * 7) % 3),
+}));
+
+function Particle({ delay, x, size, duration }: { delay: number; x: number; size: number; duration: number }) {
   return (
     <div
-      ref={ref}
-      className={`reveal ${vis ? "revealed" : ""} ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </div>
+      className="particle-float"
+      style={{
+        position: "absolute", bottom: 0, borderRadius: "50%",
+        left: `${x}%`, width: `${size}px`, height: `${size}px`,
+        animationDelay: `${delay}s`, animationDuration: `${duration}s`,
+        background: "radial-gradient(circle, rgba(251,191,36,0.7), rgba(217,119,6,0.1))",
+      }}
+    />
   );
-};
+}
 
-/* ── gold divider ── */
-const GoldDivider = () => (
-  <div className="gold-divider">
-    <span />
-    <span className="diamond">◆</span>
-    <span />
-  </div>
-);
-
-/* ── profile card ── */
-const ProfileCard = ({ name, age, place, profession, faith, img, verified, delay }) => {
-  const [ref, vis] = useInView();
-  return (
-    <div
-      ref={ref}
-      className={`profile-card ${vis ? "card-in" : ""}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      <div className="card-glow" />
-      <div className="card-top">
-        <div className="avatar-wrap">
-          <div className="avatar-ring" />
-          <div className="avatar" style={{ background: img }}>
-            {name[0]}
-          </div>
-          {verified && <span className="verified">✓</span>}
-        </div>
-        <div className="card-badge">DEMO</div>
-      </div>
-      <h3 className="card-name">{name}</h3>
-      <p className="card-meta">{age} yrs · {profession}</p>
-      <p className="card-meta">{place}</p>
-      <p className="card-faith">{faith}</p>
-      <div className="card-divider" />
-      <button className="wa-btn">
-        <span>💬</span> WhatsApp Connect
-      </button>
-      <button className="view-btn">View Profile →</button>
-    </div>
-  );
-};
-
-/* ── feature card ── */
-const FeatureCard = ({ icon, title, desc, delay }) => {
-  const [ref, vis] = useInView();
-  return (
-    <div
-      ref={ref}
-      className={`feature-card ${vis ? "card-in" : ""}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      <div className="feature-icon">{icon}</div>
-      <h4 className="feature-title">{title}</h4>
-      <p className="feature-desc">{desc}</p>
-    </div>
-  );
-};
-
-/* ── testimonial ── */
-const TestiCard = ({ name, text, stars, delay }) => {
-  const [ref, vis] = useInView();
-  return (
-    <div
-      ref={ref}
-      className={`testi-card ${vis ? "card-in" : ""}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      <div className="stars">{"★".repeat(stars)}</div>
-      <p className="testi-text">"{text}"</p>
-      <p className="testi-name">— {name}</p>
-    </div>
-  );
-};
-
-/* ══════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════ */
-export default function App() {
-  const countdown = useCountdown("2025-06-29T00:00:00");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+export default function KattunayakanMatrimonyLanding() {
+  const [downloading, setDownloading] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+  const [activeFeature, setActiveFeature] = useState<number | null>(null);
+  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
+  const refs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", onScroll);
+    const onScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const profiles = [
-    {
-      name: "Kavitha R.",
-      age: 24,
-      place: "Madurai",
-      profession: "Teacher",
-      faith: "Kattunayakan · Hindu",
-      img: "linear-gradient(135deg,#a8936a,#5c3d1e)",
-      verified: true,
-    },
-    {
-      name: "Murugan S.",
-      age: 27,
-      place: "Coimbatore",
-      profession: "Engineer",
-      faith: "Kattunayakan · Hindu",
-      img: "linear-gradient(135deg,#5c3d1e,#2d6a4f)",
-      verified: true,
-    },
-    {
-      name: "Selvi P.",
-      age: 23,
-      place: "Salem",
-      profession: "Nurse",
-      faith: "Kattunayakan · Hindu",
-      img: "linear-gradient(135deg,#c9956c,#8B4513)",
-      verified: false,
-    },
-  ];
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting) {
+          const id = (e.target as HTMLElement).dataset.sid;
+          if (id) setVisibleSections((prev) => new Set([...prev, id]));
+        }
+      }),
+      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
+    );
+    Object.values(refs.current).forEach((el) => el && obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
 
-  const features = [
-    { icon: "🌿", title: "Community Match", desc: "Exclusively for Kattunayakan families — curated profiles from trusted villages." },
-    { icon: "🛡️", title: "Verified Profiles", desc: "Every profile is manually verified for authenticity and community trust." },
-    { icon: "📍", title: "Village Connect", desc: "Filter by village, taluk, and district to find the perfect match nearby." },
-    { icon: "💬", title: "WhatsApp Direct", desc: "Connect instantly via WhatsApp — no middlemen, just family conversations." },
-    { icon: "🌐", title: "Tamil & English", desc: "Full bilingual support — your language, your comfort, your culture." },
-    { icon: "🔒", title: "Privacy First", desc: "Your data is yours. Control who sees your profile at every step." },
-  ];
+  const r = (id: string) => (el: HTMLElement | null) => { refs.current[id] = el; };
+  const visible = (id: string) => visibleSections.has(id);
 
-  const testimonials = [
-    { name: "Ravi & Meena, Dharmapuri", text: "We found our soulmate through this platform. Our families are so happy!", stars: 5 },
-    { name: "Anbu, Namakkal", text: "Best app for Kattunayakan community. Simple, honest and really works.", stars: 5 },
-    { name: "Lakshmi, Tirupur", text: "As a girl's family we felt safe and respected. Highly recommend!", stars: 5 },
-  ];
+  const handleDownload = () => {
+    setDownloading(true);
+    setTimeout(() => { window.open(APK_DOWNLOAD_URL, "_blank"); setDownloading(false); }, 1500);
+  };
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Cinzel:wght@400;600;700&family=Lato:wght@300;400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&family=Cinzel:wght@400;600;700&family=Lato:wght@300;400;700&display=swap');
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+        *, *::before, *::after {
+          margin: 0; padding: 0; box-sizing: border-box;
+          -webkit-tap-highlight-color: transparent;
+        }
         :root {
-          --gold: #D4AF37;
-          --light-gold: #F5D97A;
-          --pale-gold: #fff8e1;
-          --green-deep: #071510;
-          --green-mid: #0d2218;
-          --green-bright: #1a4230;
-          --green-accent: #2d6a4f;
-          --text: #f0e8d0;
-          --text-dim: #9aab94;
+          --gold: #f59e0b; --gold-l: #fcd34d; --gold-d: #b45309;
+          --deep: #0b0700; --surface: #1a1200; --surface2: #241900;
+          --text: #fef3c7; --muted: #b45309;
         }
-
-        html { scroll-behavior: smooth; }
-
+        html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
         body {
+          background: var(--deep); color: var(--text);
           font-family: 'Lato', sans-serif;
-          background: var(--green-deep);
-          color: var(--text);
-          overflow-x: hidden;
+          overflow-x: hidden; min-height: 100dvh;
         }
 
-        /* ─── scrollbar ─── */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: var(--green-deep); }
-        ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+        .fd { font-family: 'Cinzel', serif; }
+        .ft { font-family: 'Noto Sans Tamil', sans-serif; }
 
-        /* ─── particles ─── */
-        .particles-layer {
-          position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1;
+        /* particles */
+        @keyframes pf {
+          0%   { transform: translateY(0)      scale(1);   opacity: 0; }
+          8%   { opacity: .8; }
+          92%  { opacity: .2; }
+          100% { transform: translateY(-100vh) scale(.2);  opacity: 0; }
         }
-        .particle {
-          position: absolute;
-          background: var(--gold);
-          border-radius: 50%;
-          opacity: 0;
-          animation: floatUp linear infinite;
-        }
-        @keyframes floatUp {
-          0%   { transform: translateY(0) scale(1); opacity: 0; }
-          20%  { opacity: .55; }
-          80%  { opacity: .35; }
-          100% { transform: translateY(-120vh) scale(.4); opacity: 0; }
-        }
+        .particle-float { animation: pf linear infinite; }
 
-        /* ─── navbar ─── */
-        .navbar {
-          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-          padding: 14px 20px;
-          display: flex; align-items: center; justify-content: space-between;
-          transition: background .4s, box-shadow .4s;
+        /* shimmer */
+        @keyframes sh {
+          0%   { background-position: -300% center; }
+          100% { background-position:  300% center; }
         }
-        .navbar.scrolled {
-          background: rgba(7,21,16,.92);
-          backdrop-filter: blur(20px);
-          box-shadow: 0 2px 30px rgba(212,175,55,.15);
-          border-bottom: 1px solid rgba(212,175,55,.18);
-        }
-        .nav-logo {
-          font-family: 'Cinzel', serif;
-          color: var(--gold);
-          font-size: 15px;
-          font-weight: 700;
-          letter-spacing: 1px;
-          line-height: 1.2;
-        }
-        .nav-logo small { display: block; font-size: 9px; color: var(--text-dim); letter-spacing: 2px; font-family: 'Lato', sans-serif; }
-        .nav-demo-badge {
-          background: linear-gradient(90deg, var(--gold), #b8860b);
-          color: #000;
-          font-size: 9px;
-          font-weight: 800;
-          padding: 3px 10px;
-          border-radius: 20px;
-          letter-spacing: 1.5px;
-          animation: pulse-badge 2s infinite;
-        }
-        @keyframes pulse-badge {
-          0%,100% { box-shadow: 0 0 0 0 rgba(212,175,55,.6); }
-          50%      { box-shadow: 0 0 0 8px rgba(212,175,55,0); }
+        .shimmer {
+          background: linear-gradient(90deg,#d97706,#fcd34d,#f59e0b,#fbbf24,#d97706);
+          background-size: 300% auto;
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text; animation: sh 4s linear infinite;
         }
 
-        /* ─── hero ─── */
-        .hero {
-          min-height: 100svh;
-          position: relative;
-          display: flex; flex-direction: column; align-items: center;
-          justify-content: center;
-          padding: 100px 20px 60px;
-          overflow: hidden;
-          text-align: center;
+        /* glow */
+        @keyframes glow {
+          0%,100% { box-shadow: 0 0 18px rgba(245,158,11,.5), 0 0 44px rgba(245,158,11,.22); }
+          50%      { box-shadow: 0 0 36px rgba(245,158,11,.8), 0 0 72px rgba(245,158,11,.38); }
         }
-        .hero-bg {
-          position: absolute; inset: 0;
-          background:
-            radial-gradient(ellipse at 50% 0%, rgba(45,106,79,.55) 0%, transparent 60%),
-            radial-gradient(ellipse at 80% 80%, rgba(212,175,55,.12) 0%, transparent 50%),
-            linear-gradient(180deg, #071510 0%, #0a1e12 60%, #071510 100%);
+        .glow { animation: glow 2.6s ease-in-out infinite; }
+
+        /* mandala */
+        @keyframes mcw  { to { transform: rotate(360deg); } }
+        @keyframes mccw { to { transform: rotate(-360deg); } }
+        .mcw  { animation: mcw  45s linear infinite; }
+        .mccw { animation: mccw 35s linear infinite; }
+
+        /* hero blob */
+        @keyframes hb {
+          0%,100% { opacity:.6; transform: translateX(-50%) scale(1); }
+          50%      { opacity:1;  transform: translateX(-50%) scale(1.1); }
         }
-        .hero-bg::before {
-          content: '';
-          position: absolute; inset: 0;
-          background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4AF37' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        .hero-blob { animation: hb 7s ease-in-out infinite; }
+
+        /* bounce */
+        @keyframes bd { 0%,100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+        .bd { animation: bd 1.5s ease-in-out infinite; }
+
+        /* marquee */
+        @keyframes mq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .mq { animation: mq 18s linear infinite; }
+
+        /* download btn */
+        .dlb {
+          position: relative; overflow: hidden; cursor: pointer; border: none;
+          background: linear-gradient(135deg,#92400e,#b45309,#d97706,#f59e0b);
+          color: #fff; transition: transform .18s, box-shadow .18s;
+          touch-action: manipulation; -webkit-user-select: none; user-select: none;
+        }
+        .dlb::after {
+          content: ''; position: absolute;
+          top: -50%; left: -80%; width: 50%; height: 200%;
+          background: rgba(255,255,255,.22); transform: skewX(-20deg);
+          transition: left .55s ease;
+        }
+        .dlb:hover::after, .dlb:focus::after { left: 130%; }
+        .dlb:active { transform: scale(.96); }
+
+        /* ornament */
+        .orn { display:flex; align-items:center; gap:10px; justify-content:center; }
+        .orn::before,.orn::after {
+          content:''; flex:1; height:1px; max-width:64px;
+          background: linear-gradient(90deg,transparent,var(--gold),transparent);
         }
 
-        .hero-badge {
-          display: inline-flex; align-items: center; gap: 8px;
-          background: rgba(212,175,55,.12);
-          border: 1px solid rgba(212,175,55,.45);
-          border-radius: 50px;
-          padding: 6px 16px;
-          font-size: 11px;
-          letter-spacing: 2px;
-          color: var(--light-gold);
-          margin-bottom: 22px;
-          animation: glow-badge 3s ease-in-out infinite;
-          position: relative; z-index: 2;
+        /* card */
+        .card {
+          border: 1px solid rgba(245,158,11,.12);
+          background: linear-gradient(145deg,rgba(36,25,0,.96),rgba(18,13,0,.98));
+          transition: border-color .3s, transform .2s;
         }
-        .badge-dot {
-          width: 7px; height: 7px; border-radius: 50%;
-          background: #00ff88;
-          animation: blink 1.2s ease-in-out infinite;
-        }
-        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.2; } }
-        @keyframes glow-badge {
-          0%,100% { box-shadow: 0 0 10px rgba(212,175,55,.3); }
-          50%      { box-shadow: 0 0 25px rgba(212,175,55,.6); }
-        }
+        .card:active { transform: scale(.97); border-color: rgba(245,158,11,.4); }
 
-        .hero-title {
-          font-family: 'Cinzel', serif;
-          font-size: clamp(26px, 7vw, 52px);
-          font-weight: 700;
-          line-height: 1.15;
-          background: linear-gradient(135deg, var(--light-gold) 0%, var(--gold) 40%, #a0742a 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin-bottom: 10px;
-          position: relative; z-index: 2;
-          animation: heroEntry .9s cubic-bezier(.2,1,.3,1) both;
-        }
-        .hero-tamil {
-          font-size: clamp(13px, 3.5vw, 20px);
-          color: rgba(245,217,122,.65);
-          font-family: 'Lato', sans-serif;
-          margin-bottom: 14px;
-          position: relative; z-index: 2;
-          animation: heroEntry 1s .15s cubic-bezier(.2,1,.3,1) both;
-        }
-        .hero-sub {
-          font-size: clamp(14px, 3.5vw, 18px);
-          color: var(--text-dim);
-          max-width: 360px;
-          margin: 0 auto 30px;
-          line-height: 1.6;
-          position: relative; z-index: 2;
-          animation: heroEntry 1s .25s cubic-bezier(.2,1,.3,1) both;
-        }
-        @keyframes heroEntry {
-          from { opacity:0; transform: translateY(30px); }
-          to   { opacity:1; transform: translateY(0); }
-        }
-
-        /* phone mockup */
-        .phone-wrap {
-          position: relative; z-index: 2;
-          margin: 0 auto 32px;
-          animation: float 4s ease-in-out infinite, heroEntry 1.1s .1s both;
-          width: 200px;
-        }
-        @keyframes float {
-          0%,100% { transform: translateY(0px) rotate(-1deg); }
-          50%      { transform: translateY(-14px) rotate(1deg); }
-        }
-        .phone-frame {
-          width: 200px; height: 370px;
-          border-radius: 36px;
-          border: 3px solid rgba(212,175,55,.65);
-          background: linear-gradient(160deg, #122918 0%, #071510 100%);
-          box-shadow:
-            0 0 0 1px rgba(212,175,55,.15),
-            0 25px 60px rgba(0,0,0,.7),
-            0 0 40px rgba(212,175,55,.25),
-            inset 0 1px 0 rgba(212,175,55,.3);
-          overflow: hidden;
-          position: relative;
-          display: flex; flex-direction: column; align-items: center;
-          padding: 14px 10px 10px;
-        }
-        .phone-notch {
-          width: 70px; height: 10px; border-radius: 6px;
-          background: rgba(212,175,55,.2);
-          margin-bottom: 10px;
-        }
-        .phone-screen-title {
-          font-family: 'Cinzel', serif;
-          font-size: 9px;
-          color: var(--gold);
-          letter-spacing: 1px;
-          margin-bottom: 8px;
-        }
-        .phone-avatar-row {
-          display: flex; gap: 8px; margin-bottom: 10px;
-        }
-        .mini-card {
-          width: 75px; border-radius: 14px;
-          background: rgba(212,175,55,.08);
-          border: 1px solid rgba(212,175,55,.25);
-          padding: 8px 6px;
-          text-align: center;
-        }
-        .mini-avatar {
-          width: 36px; height: 36px; border-radius: 50%;
-          margin: 0 auto 4px;
-          border: 2px solid var(--gold);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 16px;
-        }
-        .mini-name { font-size: 7px; color: var(--light-gold); }
-        .mini-loc  { font-size: 6px; color: var(--text-dim); }
-        .phone-match-btn {
-          width: 100%;
-          background: linear-gradient(90deg, var(--gold), #b8860b);
-          color: #000;
-          border: none;
-          border-radius: 10px;
-          padding: 7px;
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: .8px;
-          margin-top: 6px;
-          cursor: pointer;
-        }
-        .phone-stats {
-          display: flex; justify-content: space-around; width: 100%;
-          margin-top: 10px; padding-top: 8px;
-          border-top: 1px solid rgba(212,175,55,.15);
-        }
-        .pstat { text-align: center; }
-        .pstat-n { font-size: 11px; color: var(--gold); font-weight: 700; }
-        .pstat-l { font-size: 6px; color: var(--text-dim); }
-
-        /* hero buttons */
-        .hero-btns {
-          display: flex; flex-direction: column; gap: 12px;
-          align-items: center;
-          position: relative; z-index: 2;
-          animation: heroEntry 1s .4s both;
-          margin-bottom: 28px;
-        }
-        .btn-primary {
-          display: flex; align-items: center; gap: 10px;
-          background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%);
-          color: #0a1f0e;
-          font-family: 'Cinzel', serif;
-          font-size: 13px;
-          font-weight: 700;
-          letter-spacing: 1px;
-          padding: 14px 32px;
-          border-radius: 50px;
-          border: none;
-          cursor: pointer;
-          box-shadow: 0 8px 30px rgba(212,175,55,.4);
-          transition: transform .2s, box-shadow .2s;
-          width: 260px; justify-content: center;
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(212,175,55,.55); }
-        .btn-secondary {
-          display: flex; align-items: center; gap: 10px;
-          background: transparent;
-          color: var(--light-gold);
-          font-family: 'Cinzel', serif;
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: 1px;
-          padding: 13px 32px;
-          border-radius: 50px;
-          border: 1.5px solid rgba(212,175,55,.5);
-          cursor: pointer;
-          transition: all .2s;
-          width: 260px; justify-content: center;
-        }
-        .btn-secondary:hover {
-          background: rgba(212,175,55,.1);
-          border-color: var(--gold);
-          box-shadow: 0 0 20px rgba(212,175,55,.2);
-        }
-
-        /* launch strip */
-        .launch-strip {
-          position: relative; z-index: 2;
-          display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
-          animation: heroEntry 1s .5s both;
-        }
-        .strip-pill {
-          background: rgba(212,175,55,.08);
-          border: 1px solid rgba(212,175,55,.25);
-          border-radius: 20px;
-          padding: 5px 14px;
-          font-size: 11px;
-          color: var(--text-dim);
-        }
-        .strip-pill span { color: var(--light-gold); font-weight: 700; }
-
-        /* ─── section base ─── */
-        section { padding: 72px 20px; position: relative; }
-        .section-label {
-          font-size: 10px;
-          letter-spacing: 3px;
-          color: var(--gold);
-          text-transform: uppercase;
-          text-align: center;
-          margin-bottom: 10px;
-        }
-        .section-title {
-          font-family: 'Cinzel', serif;
-          font-size: clamp(22px, 6vw, 36px);
-          font-weight: 700;
-          text-align: center;
-          background: linear-gradient(135deg, var(--light-gold), var(--gold));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin-bottom: 8px;
-        }
-        .section-sub {
-          text-align: center;
-          color: var(--text-dim);
-          font-size: 14px;
-          max-width: 340px;
-          margin: 0 auto 42px;
-          line-height: 1.6;
-        }
-
-        /* ─── reveal animation ─── */
-        .reveal { opacity:0; transform: translateY(36px); transition: opacity .7s ease, transform .7s ease; }
-        .revealed { opacity:1; transform: translateY(0); }
-
-        /* ─── APK section ─── */
-        .apk-section { background: linear-gradient(180deg, var(--green-deep) 0%, var(--green-mid) 100%); }
-        .apk-card {
-          max-width: 400px; margin: 0 auto;
-          background: rgba(212,175,55,.06);
-          border: 1.5px solid rgba(212,175,55,.35);
-          border-radius: 28px;
-          padding: 36px 28px;
-          text-align: center;
-          position: relative;
-          overflow: hidden;
-          box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 40px rgba(212,175,55,.1);
-        }
-        .apk-card::before {
-          content:'';
-          position:absolute; inset:0;
-          background: radial-gradient(ellipse at 50% 0%, rgba(212,175,55,.1), transparent 70%);
-          pointer-events:none;
-        }
-        .apk-icon {
-          width: 80px; height: 80px; margin: 0 auto 20px;
-          background: linear-gradient(135deg, var(--gold), #b8860b);
-          border-radius: 24px;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 38px;
-          box-shadow: 0 8px 30px rgba(212,175,55,.4);
-        }
-        .apk-title {
-          font-family: 'Cinzel', serif;
-          font-size: 20px; color: var(--light-gold);
-          margin-bottom: 6px;
-        }
-        .apk-version { font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
-        .apk-tags {
-          display: flex; flex-wrap: wrap; gap: 8px;
-          justify-content: center; margin-bottom: 28px;
-        }
-        .apk-tag {
-          background: rgba(212,175,55,.1);
-          border: 1px solid rgba(212,175,55,.3);
-          border-radius: 20px;
-          padding: 4px 12px;
-          font-size: 11px;
-          color: var(--light-gold);
-        }
-        .apk-download-btn {
-          width: 100%;
-          background: linear-gradient(135deg, var(--gold), #b8860b);
-          color: #071510;
-          font-family: 'Cinzel', serif;
-          font-size: 15px;
-          font-weight: 700;
-          padding: 16px;
-          border-radius: 16px;
-          border: none;
-          cursor: pointer;
-          box-shadow: 0 8px 30px rgba(212,175,55,.4);
-          letter-spacing: .5px;
-          transition: transform .2s, box-shadow .2s;
-        }
-        .apk-download-btn:hover { transform: scale(1.02); box-shadow: 0 12px 40px rgba(212,175,55,.55); }
-        .apk-secure { margin-top: 14px; font-size: 11px; color: var(--text-dim); }
-
-        /* ─── features ─── */
-        .features-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 14px;
-          max-width: 480px;
-          margin: 0 auto;
-        }
-        .feature-card {
-          background: rgba(212,175,55,.05);
-          border: 1px solid rgba(212,175,55,.2);
-          border-radius: 20px;
-          padding: 22px 16px;
-          text-align: center;
-          transition: transform .3s, box-shadow .3s, border-color .3s;
-          opacity: 0; transform: translateY(30px);
-        }
-        .feature-card.card-in { opacity:1; transform: translateY(0); transition: opacity .6s ease, transform .6s ease, box-shadow .3s; }
-        .feature-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 16px 40px rgba(0,0,0,.4), 0 0 20px rgba(212,175,55,.15);
-          border-color: rgba(212,175,55,.5);
-        }
-        .feature-icon { font-size: 28px; margin-bottom: 10px; }
-        .feature-title { font-family: 'Cinzel', serif; font-size: 13px; color: var(--light-gold); margin-bottom: 6px; }
-        .feature-desc { font-size: 11px; color: var(--text-dim); line-height: 1.55; }
-
-        /* ─── village map ─── */
-        .map-section { background: var(--green-mid); }
-        .village-grid {
-          display: grid; grid-template-columns: repeat(2,1fr);
-          gap: 10px; max-width: 420px; margin: 0 auto;
-        }
-        .village-pill {
-          background: rgba(212,175,55,.07);
-          border: 1px solid rgba(212,175,55,.22);
-          border-radius: 14px;
-          padding: 14px;
-          display: flex; align-items: center; gap: 10px;
-          transition: all .25s;
-        }
-        .village-pill:hover { background: rgba(212,175,55,.14); border-color: rgba(212,175,55,.5); }
-        .village-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
-        .village-name { font-size: 13px; color: var(--text); font-weight: 600; }
-        .village-count { font-size: 10px; color: var(--text-dim); }
-
-        /* ─── profiles ─── */
-        .profiles-scroll {
-          display: flex; gap: 16px;
-          overflow-x: auto;
-          padding: 4px 0 16px;
-          -ms-overflow-style: none; scrollbar-width: none;
-        }
-        .profiles-scroll::-webkit-scrollbar { display: none; }
-        .profile-card {
-          min-width: 220px; max-width: 220px;
-          background: rgba(212,175,55,.06);
-          border: 1.5px solid rgba(212,175,55,.25);
-          border-radius: 28px;
-          padding: 24px 18px;
-          position: relative;
-          overflow: hidden;
-          flex-shrink: 0;
-          opacity: 0; transform: translateY(30px);
-          transition: opacity .6s ease, transform .6s ease;
-        }
-        .profile-card.card-in { opacity:1; transform: translateY(0); }
-        .profile-card:hover { border-color: rgba(212,175,55,.55); box-shadow: 0 12px 40px rgba(0,0,0,.4), 0 0 20px rgba(212,175,55,.12); }
-        .card-glow {
-          position:absolute; top:-40px; left:50%; transform: translateX(-50%);
-          width:120px; height:120px; border-radius:50%;
-          background: radial-gradient(circle, rgba(212,175,55,.18), transparent 70%);
-          pointer-events:none;
-        }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
-        .avatar-wrap { position: relative; }
-        .avatar-ring {
-          position:absolute; inset:-3px;
-          border-radius: 50%;
-          background: conic-gradient(var(--gold), transparent 40%, var(--gold));
-          animation: spin 6s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .avatar {
-          width: 58px; height: 58px; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 22px; font-weight: 700; color: var(--pale-gold);
-          font-family: 'Cinzel', serif;
-          position: relative; z-index: 1;
-        }
-        .verified {
-          position:absolute; bottom:-2px; right:-2px;
-          width:18px; height:18px; border-radius:50%;
-          background: var(--gold);
-          color: #000; font-size: 9px;
-          display:flex; align-items:center; justify-content:center;
-          font-weight:900; z-index:2;
-        }
-        .card-badge {
-          background: rgba(212,175,55,.15);
-          border: 1px solid rgba(212,175,55,.4);
-          border-radius: 8px;
-          padding: 3px 8px;
-          font-size: 9px; color: var(--gold);
-          letter-spacing: 1px;
-        }
-        .card-name { font-family: 'Cinzel', serif; font-size: 15px; color: var(--light-gold); margin-bottom: 4px; }
-        .card-meta { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
-        .card-faith { font-size: 11px; color: rgba(212,175,55,.7); margin-top: 4px; }
-        .card-divider { height:1px; background: rgba(212,175,55,.15); margin: 14px 0; }
-        .wa-btn {
-          width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
-          background: #25D366;
-          color: #fff;
-          font-size: 12px; font-weight: 700;
-          border: none; border-radius: 12px;
-          padding: 10px;
-          cursor: pointer;
-          margin-bottom: 8px;
-          transition: opacity .2s;
-        }
-        .wa-btn:hover { opacity: .85; }
-        .view-btn {
-          width: 100%;
-          background: transparent;
-          color: var(--gold);
-          font-size: 12px;
-          border: 1px solid rgba(212,175,55,.35);
-          border-radius: 12px;
-          padding: 9px;
-          cursor: pointer;
-          transition: all .2s;
-        }
-        .view-btn:hover { background: rgba(212,175,55,.1); }
-
-        /* ─── trust ─── */
-        .trust-section { background: var(--green-deep); }
-        .stats-grid {
-          display: grid; grid-template-columns: repeat(2,1fr);
-          gap: 14px; max-width: 400px; margin: 0 auto 42px;
-        }
-        .stat-box {
-          background: rgba(212,175,55,.06);
-          border: 1px solid rgba(212,175,55,.22);
-          border-radius: 20px;
-          padding: 22px 14px;
-          text-align: center;
-        }
-        .stat-number { font-family: 'Cinzel', serif; font-size: 28px; color: var(--gold); font-weight: 700; }
-        .stat-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
-
-        /* ─── lang section ─── */
-        .lang-section { background: var(--green-mid); }
-        .lang-cards {
-          display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
-        }
-        .lang-card {
-          background: rgba(212,175,55,.07);
-          border: 1px solid rgba(212,175,55,.25);
-          border-radius: 22px;
-          padding: 28px 24px;
-          text-align: center;
-          min-width: 140px;
-        }
-        .lang-flag { font-size: 36px; margin-bottom: 10px; }
-        .lang-name { font-family: 'Cinzel', serif; font-size: 14px; color: var(--light-gold); margin-bottom: 4px; }
-        .lang-desc { font-size: 11px; color: var(--text-dim); }
-
-        /* ─── WhatsApp ─── */
-        .wa-section {
-          background: linear-gradient(135deg, #071510, #0d2218);
-          text-align: center;
-        }
-        .wa-big-btn {
-          display: inline-flex; align-items: center; gap: 12px;
-          background: #25D366;
-          color: #fff;
-          font-family: 'Cinzel', serif;
-          font-size: 15px;
-          font-weight: 700;
-          padding: 18px 36px;
-          border-radius: 50px;
-          border: none;
-          cursor: pointer;
-          box-shadow: 0 8px 30px rgba(37,211,102,.4);
-          transition: transform .2s, box-shadow .2s;
-          margin-top: 28px;
-          letter-spacing: .5px;
-        }
-        .wa-big-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(37,211,102,.55); }
-        .wa-sub { font-size: 12px; color: var(--text-dim); margin-top: 14px; }
-
-        /* ─── testimonials ─── */
-        .testi-scroll {
-          display: flex; gap: 16px;
-          overflow-x: auto;
-          padding: 4px 0 16px;
-          -ms-overflow-style: none; scrollbar-width: none;
-        }
-        .testi-scroll::-webkit-scrollbar { display: none; }
-        .testi-card {
-          min-width: 270px; max-width: 270px;
-          background: rgba(212,175,55,.05);
-          border: 1px solid rgba(212,175,55,.22);
-          border-radius: 22px;
-          padding: 24px 20px;
-          flex-shrink: 0;
-          opacity: 0; transform: translateY(30px);
-          transition: opacity .6s ease, transform .6s ease;
-        }
-        .testi-card.card-in { opacity:1; transform: translateY(0); }
-        .stars { font-size: 16px; color: var(--gold); margin-bottom: 10px; }
-        .testi-text { font-size: 13px; color: var(--text); line-height: 1.65; margin-bottom: 14px; font-style: italic; }
-        .testi-name { font-size: 11px; color: var(--text-dim); font-weight: 700; }
-
-        /* ─── countdown ─── */
-        .countdown-section {
-          background: linear-gradient(135deg, var(--green-deep), var(--green-mid));
-          text-align: center;
-        }
-        .countdown-grid {
-          display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
-          margin: 36px 0;
-        }
-        .time-box {
-          background: rgba(212,175,55,.08);
-          border: 1.5px solid rgba(212,175,55,.35);
-          border-radius: 20px;
-          padding: 20px 16px;
-          min-width: 75px;
-          position: relative;
-          overflow: hidden;
-        }
-        .time-box::before {
-          content:'';
-          position:absolute; top:0; left:0; right:0; height:2px;
-          background: linear-gradient(90deg, transparent, var(--gold), transparent);
-          animation: scan 3s ease-in-out infinite;
-        }
-        @keyframes scan {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .time-number {
-          font-family: 'Cinzel', serif;
-          font-size: 36px;
-          color: var(--gold);
-          font-weight: 700;
-          display: block;
-          line-height: 1;
-        }
-        .time-label { font-size: 10px; color: var(--text-dim); letter-spacing: 2px; margin-top: 4px; }
-        .launch-date-badge {
-          display: inline-flex; align-items: center; gap: 8px;
-          background: linear-gradient(90deg, rgba(212,175,55,.15), rgba(212,175,55,.05));
-          border: 1px solid rgba(212,175,55,.4);
-          border-radius: 50px;
-          padding: 10px 24px;
-          font-family: 'Cinzel', serif;
-          font-size: 14px;
-          color: var(--light-gold);
-          margin-bottom: 32px;
-        }
-
-        /* ─── gold divider ─── */
-        .gold-divider {
-          display: flex; align-items: center; gap: 12px;
-          max-width: 300px; margin: 0 auto 40px;
-        }
-        .gold-divider span:first-child,
-        .gold-divider span:last-child {
-          flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent);
-        }
-        .gold-divider .diamond { color: var(--gold); font-size: 10px; }
-
-        /* ─── footer ─── */
-        .footer {
-          background: #040e08;
-          padding: 40px 20px;
-          text-align: center;
-          border-top: 1px solid rgba(212,175,55,.15);
-        }
-        .footer-logo {
-          font-family: 'Cinzel', serif;
-          font-size: 18px;
-          color: var(--gold);
-          margin-bottom: 6px;
-        }
-        .footer-tagline { font-size: 12px; color: var(--text-dim); margin-bottom: 22px; }
-        .footer-links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
-        .footer-link { font-size: 12px; color: var(--text-dim); cursor: pointer; text-decoration: none; }
-        .footer-link:hover { color: var(--gold); }
-        .footer-copy { font-size: 10px; color: rgba(154,171,148,.4); }
-        .footer-demo-note {
+        /* chip */
+        .chip {
+          font-family: 'Noto Sans Tamil', sans-serif;
+          background: rgba(245,158,11,.08);
+          border: 1px solid rgba(245,158,11,.2);
+          color: #fcd34d;
+          transition: background .2s, transform .15s;
           display: inline-block;
-          background: rgba(212,175,55,.08);
-          border: 1px solid rgba(212,175,55,.2);
-          border-radius: 12px;
-          padding: 6px 16px;
-          font-size: 10px; color: var(--text-dim);
-          margin-bottom: 16px;
-          letter-spacing: 1px;
+        }
+        .chip:active { background: rgba(245,158,11,.2); transform: scale(.94); }
+
+        /* section reveal */
+        @keyframes ru { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+        .rv    { opacity: 0; }
+        .rv.on { animation: ru .65s cubic-bezier(.22,1,.36,1) forwards; }
+
+        /* spin */
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* sticky CTA slide */
+        .sticky-cta {
+          transform: translateY(100%);
+          transition: transform .35s cubic-bezier(.22,1,.36,1);
+        }
+        .sticky-cta.visible { transform: translateY(0); }
+
+        /* kolam bg */
+        .kb {
+          background-image:
+            radial-gradient(ellipse 80% 55% at 20% 30%, rgba(245,158,11,.03) 0%,transparent 60%),
+            radial-gradient(ellipse 60% 75% at 80% 70%, rgba(153,27,27,.04) 0%,transparent 60%);
         }
 
-        /* ─── scroll hint ─── */
-        .scroll-hint {
-          position: relative; z-index: 2;
-          display: flex; flex-direction: column; align-items: center;
-          gap: 6px; margin-top: 20px;
-          animation: heroEntry 1s .8s both;
-          opacity: .5;
-        }
-        .scroll-line {
-          width: 1px; height: 40px;
-          background: linear-gradient(180deg, var(--gold), transparent);
-          animation: scrollLine 2s ease-in-out infinite;
-        }
-        @keyframes scrollLine {
-          0%,100% { scaleY: .5; opacity: .4; }
-          50%      { scaleY: 1; opacity: 1; }
-        }
-        .scroll-text { font-size: 9px; letter-spacing: 3px; color: var(--text-dim); }
+        /* safe area */
+        .pb-safe { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+
+        /* feature card active */
+        .fca { border-color: rgba(245,158,11,.45) !important; }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #130e00; }
+        ::-webkit-scrollbar-thumb { background: var(--gold-d); border-radius: 2px; }
       `}</style>
 
-      {/* ── NAVBAR ── */}
-      <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
-        <div className="nav-logo">
-          Kattunayakan<br />
-          <small>MATRIMONY</small>
-        </div>
-        <div className="nav-demo-badge">FREE DEMO</div>
-      </nav>
+      <div style={{ background: "var(--deep)", minHeight: "100dvh", position: "relative" }}>
 
-      {/* ══ HERO ══ */}
-      <section className="hero">
-        <div className="hero-bg" />
-        <Particles />
-
-        <div className="hero-badge">
-          <span className="badge-dot" />
-          FREE DEMO AVAILABLE · LAUNCHING JUNE 29
+        {/* ── Particles ── */}
+        <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
+          {PARTICLES.map((p) => <Particle key={p.id} {...p} />)}
         </div>
 
-        {/* phone mockup */}
-        <div className="phone-wrap">
-          <div className="phone-frame">
-            <div className="phone-notch" />
-            <p className="phone-screen-title">KATTUNAYAKAN MATRIMONY</p>
-            <div className="phone-avatar-row">
-              <div className="mini-card">
-                <div className="mini-avatar">👩</div>
-                <div className="mini-name">Kavitha</div>
-                <div className="mini-loc">Madurai</div>
-              </div>
-              <div className="mini-card">
-                <div className="mini-avatar">👨</div>
-                <div className="mini-name">Murugan</div>
-                <div className="mini-loc">Coimbatore</div>
+        {/* ══════════════ NAVBAR ══════════════ */}
+        <nav style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
+          background: scrollY > 50 ? "rgba(11,7,0,.97)" : "transparent",
+          backdropFilter: scrollY > 50 ? "blur(20px)" : "none",
+          borderBottom: scrollY > 50 ? "1px solid rgba(245,158,11,.12)" : "none",
+          transition: "all .3s",
+        }}>
+          <div style={{ maxWidth: 480, margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#92400e,#f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>💍</div>
+              <div>
+                <div className="fd" style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)", letterSpacing: "0.12em", lineHeight: 1.2 }}>KATTUNAYAKAN</div>
+                <div style={{ fontSize: 10, color: "var(--muted)" }}>Matrimony App</div>
               </div>
             </div>
-            <button className="phone-match-btn">✨ FIND YOUR MATCH</button>
-            <div className="phone-stats">
-              <div className="pstat"><div className="pstat-n">2.4K</div><div className="pstat-l">Profiles</div></div>
-              <div className="pstat"><div className="pstat-n">180+</div><div className="pstat-l">Villages</div></div>
-              <div className="pstat"><div className="pstat-n">96%</div><div className="pstat-l">Verified</div></div>
+            <button onClick={handleDownload} className="dlb fd" style={{ fontSize: 11, fontWeight: 700, padding: "9px 18px", borderRadius: 999, letterSpacing: "0.05em" }}>
+              📲 Download
+            </button>
+          </div>
+        </nav>
+
+        {/* ══════════════ HERO ══════════════ */}
+        <section className="kb" style={{
+          minHeight: "100dvh", display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", textAlign: "center",
+          padding: "80px 20px 48px", position: "relative", overflow: "hidden",
+        }}>
+          {/* Blob */}
+          <div className="hero-blob" style={{
+            position: "absolute", width: 300, height: 300, borderRadius: "50%",
+            top: "12%", left: "50%", pointerEvents: "none",
+            background: "radial-gradient(circle,rgba(180,83,9,.22) 0%,transparent 70%)",
+          }} />
+          {/* Mandalas */}
+          <div className="mcw" style={{ position: "absolute", fontSize: 200, right: -70, top: "6%", opacity: .055, lineHeight: 1, pointerEvents: "none", userSelect: "none" }}>✿</div>
+          <div className="mccw" style={{ position: "absolute", fontSize: 140, left: -50, bottom: "10%", opacity: .05, lineHeight: 1, pointerEvents: "none", userSelect: "none" }}>❋</div>
+          {/* Grid */}
+          <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: .04, pointerEvents: "none" }}>
+            <defs><pattern id="g" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0L0 0 0 48" fill="none" stroke="#f59e0b" strokeWidth=".6" /></pattern></defs>
+            <rect width="100%" height="100%" fill="url(#g)" />
+          </svg>
+
+          <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 380 }}>
+            {/* Badge */}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 18px", borderRadius: 999, border: "1px solid rgba(245,158,11,.3)", background: "rgba(245,158,11,.07)", marginBottom: 24 }}>
+              <span style={{ width: 7, height: 7, background: "var(--gold)", transform: "rotate(45deg)", display: "inline-block", flexShrink: 0 }} />
+              <span className="ft" style={{ fontSize: 12, color: "var(--gold-l)" }}>காட்டுநாயக்கன் மக்கள் சமுதாயம்</span>
+              <span style={{ width: 7, height: 7, background: "var(--gold)", transform: "rotate(45deg)", display: "inline-block", flexShrink: 0 }} />
             </div>
+
+            {/* Title */}
+            <h1 className="fd" style={{ fontWeight: 700, lineHeight: 1.15, marginBottom: 10, fontSize: "clamp(2rem,11vw,3rem)" }}>
+              <span className="shimmer">Kattunayakan</span><br />
+              <span style={{ color: "#fff" }}>Community</span>
+            </h1>
+            <div className="fd" style={{ letterSpacing: "0.22em", fontSize: "clamp(.7rem,4vw,.9rem)", color: "var(--muted)", marginBottom: 20 }}>MATRIMONY APP</div>
+
+            {/* Tamil lines */}
+            <p className="ft" style={{ fontSize: "clamp(.85rem,4.2vw,1rem)", color: "#fde68a", lineHeight: 1.7, marginBottom: 8 }}>
+              திருமணத் தகவல்களை பாதுகாப்பாகவும்<br />எளிதாகவும் பகிர்ந்து கொள்ளுங்கள்
+            </p>
+            <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.65, marginBottom: 32 }}>
+              Find your perfect match — safe, trusted &amp; community-verified.
+            </p>
+
+            {/* CTA */}
+            <button onClick={handleDownload} className="dlb glow" style={{ width: "100%", fontWeight: 700, borderRadius: 18, padding: "18px 24px", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 }}>
+              {downloading
+                ? <><span style={{ width: 20, height: 20, borderRadius: "50%", border: "2.5px solid #fff", borderTopColor: "transparent", animation: "spin .7s linear infinite", display: "inline-block" }} />Preparing…</>
+                : <><span style={{ fontSize: "1.35rem" }}>📲</span>Download Free APK</>}
+            </button>
+
+            {/* Trust row */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", fontSize: 11, color: "rgba(245,158,11,.45)" }}>
+              {["🤖 Android", "🆓 Free", "✅ Verified", "🔒 Secure"].map((b) => <span key={b}>{b}</span>)}
+            </div>
+
+            {/* Scroll cue */}
+            <div className="bd" style={{ marginTop: 40, color: "rgba(245,158,11,.3)", fontSize: 22 }}>⌄</div>
+          </div>
+        </section>
+
+        {/* ══════════════ MARQUEE ══════════════ */}
+        <div style={{ overflow: "hidden", padding: "11px 0", background: "linear-gradient(90deg,#7c2d12,#b45309,#d97706,#b45309,#7c2d12)", borderTop: "1px solid rgba(245,158,11,.45)", borderBottom: "1px solid rgba(245,158,11,.45)" }}>
+          <div className="mq" style={{ display: "flex", gap: 40, whiteSpace: "nowrap", width: "200%" }}>
+            {[...Array(2)].map((_, i) => (
+              <span key={i} style={{ display: "inline-flex", gap: 40, flexShrink: 0 }}>
+                {["💍 Register Now","🔒 Admin Verified","🏘️ 16 Villages","👨‍👩‍👧 12 Divisions","📲 Free APK","✅ Trusted"].map((t) => (
+                  <span key={t} className="fd" style={{ fontSize: 11, letterSpacing: "0.14em", color: "#fff", opacity: .9 }}>{t}</span>
+                ))}
+              </span>
+            ))}
           </div>
         </div>
 
-        <h1 className="hero-title">Kattunayakan<br />Matrimony</h1>
-        <p className="hero-tamil">கட்டுநாயக்கன் மேட்ரிமோனி</p>
-        <p className="hero-sub">Trusted Community Matrimony Platform for Kattunayakan families across Tamil Nadu</p>
-
-        <div className="hero-btns">
-          <button className="btn-primary">
-            <span>📲</span> Download APK — Free
-          </button>
-          <button className="btn-secondary">
-            <span>▶</span> Try Demo App
-          </button>
-        </div>
-
-        <div className="launch-strip">
-          <div className="strip-pill">🗓 Launches <span>June 29</span></div>
-          <div className="strip-pill">📦 <span>APK Ready</span></div>
-          <div className="strip-pill">🆓 <span>Free Trial</span></div>
-        </div>
-
-        <div className="scroll-hint">
-          <div className="scroll-line" />
-          <span className="scroll-text">SCROLL</span>
-        </div>
-      </section>
-
-      {/* ══ APK DOWNLOAD ══ */}
-      <section className="apk-section">
-        <Reveal>
-          <p className="section-label">Available Now</p>
-          <h2 className="section-title">Download the App</h2>
-          <p className="section-sub">Get early access with our free demo APK and experience premium matrimony.</p>
-        </Reveal>
-        <Reveal delay={150}>
-          <div className="apk-card">
-            <div className="apk-icon">🤖</div>
-            <h3 className="apk-title">Android APK</h3>
-            <p className="apk-version">Demo v1.0 · Free Trial · 18 MB</p>
-            <div className="apk-tags">
-              <span className="apk-tag">✅ Free Trial</span>
-              <span className="apk-tag">🔒 Safe & Secure</span>
-              <span className="apk-tag">🎯 Demo Access</span>
-              <span className="apk-tag">⚡ Instant Install</span>
-            </div>
-            <button className="apk-download-btn">📲 Tap to Download APK</button>
-            <p className="apk-secure">🛡 Virus-free · No personal data required for demo</p>
+        {/* ══════════════ STATS ══════════════ */}
+        <div ref={r("stats")} data-sid="stats" className={`rv ${visible("stats") ? "on" : ""}`}
+          style={{ padding: "30px 20px", borderBottom: "1px solid rgba(245,158,11,.08)" }}>
+          <div style={{ maxWidth: 380, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, textAlign: "center" }}>
+            {[{n:"12+",l:"Divisions"},{n:"16",l:"Villages"},{n:"100%",l:"Verified"},{n:"Free",l:"Forever"}].map((s,i) => (
+              <div key={i} style={{ animationDelay: `${i*.1}s` }}>
+                <div className="fd shimmer" style={{ fontSize: "clamp(.95rem,5vw,1.35rem)", fontWeight: 700 }}>{s.n}</div>
+                <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 3, letterSpacing: ".05em" }}>{s.l}</div>
+              </div>
+            ))}
           </div>
-        </Reveal>
-      </section>
-
-      {/* ══ FEATURES ══ */}
-      <section style={{ background: "var(--green-deep)", padding: "72px 20px" }}>
-        <Reveal>
-          <p className="section-label">Why Choose Us</p>
-          <h2 className="section-title">Premium Features</h2>
-          <p className="section-sub">Built exclusively for the Kattunayakan community with love and respect.</p>
-        </Reveal>
-        <div className="features-grid">
-          {features.map((f, i) => (
-            <FeatureCard key={i} {...f} delay={i * 80} />
-          ))}
         </div>
-      </section>
 
-      <GoldDivider />
+        {/* ══════════════ FEATURES ══════════════ */}
+        <section ref={r("features")} data-sid="features" className={`kb rv ${visible("features") ? "on" : ""}`}
+          style={{ padding: "48px 20px" }}>
+          <div style={{ maxWidth: 480, margin: "0 auto" }}>
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <div className="orn" style={{ marginBottom: 10 }}>
+                <span className="fd" style={{ fontSize: 10, letterSpacing: ".22em", color: "var(--gold)" }}>APP FEATURES</span>
+              </div>
+              <h2 className="fd" style={{ fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 6 }}>Everything You Need</h2>
+              <p style={{ fontSize: 13, color: "var(--muted)" }}>Built exclusively for the Kattunayakan community.</p>
+            </div>
 
-      {/* ══ VILLAGE MAP ══ */}
-      <section className="map-section">
-        <Reveal>
-          <p className="section-label">Community Reach</p>
-          <h2 className="section-title">Village Connection</h2>
-          <p className="section-sub">Connecting families from 180+ villages across Tamil Nadu.</p>
-        </Reveal>
-        <Reveal delay={100}>
-          <div className="village-grid">
-            {[
-              ["Madurai", "342 profiles"],
-              ["Dharmapuri", "218 profiles"],
-              ["Salem", "189 profiles"],
-              ["Namakkal", "156 profiles"],
-              ["Tirupur", "134 profiles"],
-              ["Coimbatore", "127 profiles"],
-              ["Krishnagiri", "98 profiles"],
-              ["Villupuram", "76 profiles"],
-            ].map(([name, count], i) => (
-              <div key={i} className="village-pill">
-                <div className="village-dot" />
-                <div>
-                  <div className="village-name">{name}</div>
-                  <div className="village-count">{count}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {FEATURES.map((f, i) => (
+                <div key={i} className={`card ${activeFeature === i ? "fca" : ""}`}
+                  style={{ borderRadius: 18, padding: "18px 16px", animationDelay: `${i*.07}s` }}
+                  onTouchStart={() => setActiveFeature(i)}
+                  onTouchEnd={() => setTimeout(() => setActiveFeature(null), 500)}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                    <div style={{ flexShrink: 0, width: 48, height: 48, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, background: "rgba(245,158,11,.09)", border: "1px solid rgba(245,158,11,.18)" }}>{f.icon}</div>
+                    <div>
+                      <div className="fd" style={{ fontSize: 14, fontWeight: 600, color: activeFeature === i ? "var(--gold-l)" : "var(--text)", marginBottom: 4 }}>{f.title}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.65 }}>{f.desc}</div>
+                    </div>
+                  </div>
+                  {activeFeature === i && <div style={{ height: 1, marginTop: 14, background: "linear-gradient(90deg,transparent,var(--gold),transparent)" }} />}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ══ PROFILES ══ */}
-      <section style={{ background: "var(--green-deep)", padding: "72px 0 72px 20px" }}>
-        <Reveal>
-          <p className="section-label">Sample Profiles</p>
-          <h2 className="section-title">Meet the Community</h2>
-          <p className="section-sub" style={{ paddingRight: 20 }}>Demo profiles from our verified community members.</p>
-        </Reveal>
-        <div className="profiles-scroll" style={{ paddingRight: 20 }}>
-          {profiles.map((p, i) => (
-            <ProfileCard key={i} {...p} delay={i * 100} />
-          ))}
-          {/* extra CTA card */}
-          <div style={{
-            minWidth: 220, maxWidth: 220,
-            background: "rgba(212,175,55,.04)",
-            border: "1.5px dashed rgba(212,175,55,.3)",
-            borderRadius: 28,
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
-            padding: "24px 18px", flexShrink: 0, textAlign: "center",
-          }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>✨</div>
-            <p style={{ color: "var(--light-gold)", fontFamily: "'Cinzel',serif", fontSize: 13, marginBottom: 8 }}>200+ More Profiles</p>
-            <p style={{ color: "var(--text-dim)", fontSize: 11, marginBottom: 16 }}>Download the app to see all community profiles</p>
-            <button className="btn-primary" style={{ width: "100%", fontSize: 11, padding: "10px 16px" }}>Download APK</button>
-          </div>
-        </div>
-      </section>
-
-      <GoldDivider />
-
-      {/* ══ TRUST STATS ══ */}
-      <section className="trust-section">
-        <Reveal>
-          <p className="section-label">Community Trust</p>
-          <h2 className="section-title">Built on Trust</h2>
-          <p className="section-sub">Thousands of families already trust Kattunayakan Matrimony.</p>
-        </Reveal>
-        <Reveal delay={100}>
-          <div className="stats-grid">
-            {[
-              ["2,400+", "Registered Profiles"],
-              ["180+", "Villages Connected"],
-              ["96%", "Verified Profiles"],
-              ["320+", "Happy Marriages"],
-            ].map(([num, label], i) => (
-              <div key={i} className="stat-box">
-                <div className="stat-number">{num}</div>
-                <div className="stat-label">{label}</div>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-        <Reveal delay={200}>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", maxWidth: 420, margin: "0 auto" }}>
-            {["Community Verified", "Privacy Protected", "100% Free Demo", "Family Approved"].map((t, i) => (
-              <div key={i} style={{
-                background: "rgba(212,175,55,.08)",
-                border: "1px solid rgba(212,175,55,.2)",
-                borderRadius: 50, padding: "6px 16px",
-                fontSize: 11, color: "var(--text-dim)"
-              }}>✓ {t}</div>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ══ LANGUAGE ══ */}
-      <section className="lang-section">
-        <Reveal>
-          <p className="section-label">Bilingual Support</p>
-          <h2 className="section-title">Tamil & English</h2>
-          <p className="section-sub">Experience the app in your preferred language.</p>
-        </Reveal>
-        <Reveal delay={100}>
-          <div className="lang-cards">
-            <div className="lang-card">
-              <div className="lang-flag">🇮🇳</div>
-              <div className="lang-name">தமிழ்</div>
-              <div className="lang-desc">Full Tamil<br />language support</div>
-            </div>
-            <div className="lang-card">
-              <div className="lang-flag">🌐</div>
-              <div className="lang-name">English</div>
-              <div className="lang-desc">Complete English<br />interface</div>
+              ))}
             </div>
           </div>
-        </Reveal>
-      </section>
+        </section>
 
-      {/* ══ WHATSAPP ══ */}
-      <section className="wa-section">
-        <Reveal>
-          <p className="section-label">Instant Connect</p>
-          <h2 className="section-title">WhatsApp Support</h2>
-          <p className="section-sub">Reach us directly on WhatsApp for help, demo access, or to register your family.</p>
-          <button className="wa-big-btn">
-            <span style={{ fontSize: 20 }}>💬</span>
-            Chat on WhatsApp
-          </button>
-          <p className="wa-sub">Response within 30 minutes · Available 8AM–10PM IST</p>
-        </Reveal>
-      </section>
-
-      {/* ══ TESTIMONIALS ══ */}
-      <section style={{ background: "var(--green-deep)", padding: "72px 0 72px 20px" }}>
-        <Reveal>
-          <p className="section-label">Success Stories</p>
-          <h2 className="section-title">What Families Say</h2>
-          <p className="section-sub" style={{ paddingRight: 20 }}>Real stories from our trusted community.</p>
-        </Reveal>
-        <div className="testi-scroll" style={{ paddingRight: 20 }}>
-          {testimonials.map((t, i) => (
-            <TestiCard key={i} {...t} delay={i * 100} />
-          ))}
-        </div>
-      </section>
-
-      {/* ══ COUNTDOWN ══ */}
-      <section className="countdown-section">
-        <Reveal>
-          <p className="section-label">Official Launch</p>
-          <h2 className="section-title">Launching Soon</h2>
-        </Reveal>
-        <Reveal delay={100}>
-          <div className="launch-date-badge">
-            🗓 &nbsp;June 29, 2025 · Official App Launch
-          </div>
-          <div className="countdown-grid">
-            {[
-              [String(countdown.d).padStart(2, "0"), "DAYS"],
-              [String(countdown.h).padStart(2, "0"), "HOURS"],
-              [String(countdown.m).padStart(2, "0"), "MINS"],
-              [String(countdown.s).padStart(2, "0"), "SECS"],
-            ].map(([n, l], i) => (
-              <div key={i} className="time-box">
-                <span className="time-number">{n}</span>
-                <div className="time-label">{l}</div>
+        {/* ══════════════ CASTES ══════════════ */}
+        <section ref={r("castes")} data-sid="castes" className={`rv ${visible("castes") ? "on" : ""}`}
+          style={{ padding: "48px 20px" }}>
+          <div style={{ maxWidth: 480, margin: "0 auto" }}>
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <div className="orn" style={{ marginBottom: 10 }}>
+                <span className="fd" style={{ fontSize: 10, letterSpacing: ".22em", color: "var(--gold)" }}>SUB-DIVISIONS</span>
               </div>
-            ))}
+              <h2 className="fd" style={{ fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 4 }}>சமூகப் பிரிவுகள்</h2>
+              <p style={{ fontSize: 12, color: "var(--muted)" }}>All registered community sub-divisions</p>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+              {CASTES.map((c, i) => (
+                <span key={i} className="chip ft" style={{ borderRadius: 999, padding: "9px 16px", fontSize: 13 }}>{c}</span>
+              ))}
+            </div>
           </div>
-          <p style={{ color: "var(--text-dim)", fontSize: 13, marginBottom: 24 }}>
-            Register now for <span style={{ color: "var(--gold)", fontWeight: 700 }}>early access & free premium features</span>
-          </p>
-          <button className="btn-primary" style={{ margin: "0 auto", display: "flex" }}>
-            🔔 Notify Me on Launch
-          </button>
-        </Reveal>
-      </section>
+        </section>
 
-      {/* ══ FOOTER ══ */}
-      <footer className="footer">
-        <div className="footer-logo">Kattunayakan Matrimony</div>
-        <p className="footer-tagline">கட்டுநாயக்கன் மேட்ரிமோனி · Trusted Community Platform</p>
-        <div className="footer-demo-note">⚠ DEMO VERSION · Official Launch: June 29, 2025</div>
-        <div className="footer-links">
-          <a className="footer-link">Privacy Policy</a>
-          <a className="footer-link">Terms of Use</a>
-          <a className="footer-link">Contact Us</a>
-          <a className="footer-link">WhatsApp</a>
+        {/* ══════════════ VILLAGES ══════════════ */}
+        <section ref={r("villages")} data-sid="villages" className={`kb rv ${visible("villages") ? "on" : ""}`}
+          style={{ padding: "48px 20px" }}>
+          <div style={{ maxWidth: 480, margin: "0 auto" }}>
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <div className="orn" style={{ marginBottom: 10 }}>
+                <span className="fd" style={{ fontSize: 10, letterSpacing: ".22em", color: "var(--gold)" }}>VILLAGES</span>
+              </div>
+              <h2 className="fd" style={{ fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 4 }}>கிராம பட்டியல்</h2>
+              <p style={{ fontSize: 12, color: "var(--muted)" }}>Villages covered within the matrimony app</p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {VILLAGES.map((v, i) => (
+                <div key={i} className="card" style={{ borderRadius: 14, padding: "13px 10px", textAlign: "center" }}>
+                  <div className="fd" style={{ fontSize: 10, color: "rgba(245,158,11,.3)", marginBottom: 4 }}>#{String(i+1).padStart(2,"0")}</div>
+                  <div className="ft" style={{ fontSize: 13, fontWeight: 600, color: "#fde68a", lineHeight: 1.4 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════ HOW IT WORKS ══════════════ */}
+        <section ref={r("steps")} data-sid="steps" className={`rv ${visible("steps") ? "on" : ""}`}
+          style={{ padding: "48px 20px" }}>
+          <div style={{ maxWidth: 420, margin: "0 auto" }}>
+            <div style={{ textAlign: "center", marginBottom: 36 }}>
+              <div className="orn" style={{ marginBottom: 10 }}>
+                <span className="fd" style={{ fontSize: 10, letterSpacing: ".22em", color: "var(--gold)" }}>HOW IT WORKS</span>
+              </div>
+              <h2 className="fd" style={{ fontWeight: 700, fontSize: 22, color: "#fff" }}>Simple. Secure. Sacred.</h2>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {STEPS.map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 16, alignItems: "flex-start", position: "relative", paddingBottom: i < STEPS.length - 1 ? 28 : 0 }}>
+                  {i < STEPS.length - 1 && (
+                    <div style={{ position: "absolute", left: 27, top: 56, width: 2, height: "calc(100% - 28px)", background: "linear-gradient(to bottom,rgba(245,158,11,.35),transparent)" }} />
+                  )}
+                  <div className="fd" style={{ flexShrink: 0, width: 54, height: 54, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, color: "var(--gold)", background: "linear-gradient(135deg,rgba(180,83,9,.28),rgba(245,158,11,.08))", border: "1px solid rgba(245,158,11,.28)" }}>{item.step}</div>
+                  <div style={{ paddingTop: 10 }}>
+                    <div className="fd" style={{ fontWeight: 600, fontSize: 14, color: "#fff", marginBottom: 4 }}>{item.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.65 }}>{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════ CTA ══════════════ */}
+        <section ref={r("cta")} data-sid="cta" className={`rv ${visible("cta") ? "on" : ""}`}
+          style={{ padding: "60px 20px 52px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 80% at 50% 100%,rgba(180,83,9,.26) 0%,transparent 70%)", pointerEvents: "none" }} />
+          {[260,180,110].map((s,i) => (
+            <div key={i} style={{ position: "absolute", width: s, height: s, borderRadius: "50%", left: "50%", top: "50%", transform: "translate(-50%,-50%)", border: `1px solid rgba(245,158,11,${.06+i*.03})`, pointerEvents: "none" }} />
+          ))}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 360, margin: "0 auto" }}>
+            <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 16 }}>💍</div>
+            <h2 className="fd shimmer" style={{ fontWeight: 700, fontSize: "clamp(1.4rem,8vw,1.9rem)", marginBottom: 12 }}>Begin Your Journey</h2>
+            <p className="ft" style={{ fontSize: 15, color: "#fde68a", lineHeight: 1.7, marginBottom: 8 }}>
+              உங்கள் வாழ்க்கை துணையை இன்றே கண்டெடுங்கள்
+            </p>
+            <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 32 }}>
+              Join hundreds of families who trust this app for sacred matrimony connections.
+            </p>
+            <button onClick={handleDownload} className="dlb glow" style={{ width: "100%", fontWeight: 700, borderRadius: 18, padding: "20px 24px", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 14 }}>
+              {downloading
+                ? <><span style={{ width: 22, height: 22, borderRadius: "50%", border: "2.5px solid #fff", borderTopColor: "transparent", animation: "spin .7s linear infinite", display: "inline-block" }} />Downloading…</>
+                : <><span style={{ fontSize: "1.5rem" }}>📲</span>Download Free APK</>}
+            </button>
+            <p style={{ fontSize: 11, color: "rgba(245,158,11,.3)" }}>Android · No data sold · Community-governed</p>
+          </div>
+        </section>
+
+        {/* ══════════════ FOOTER ══════════════ */}
+        <footer className="pb-safe" style={{ borderTop: "1px solid rgba(245,158,11,.1)", padding: "28px 20px 80px" }}>
+          <div style={{ maxWidth: 380, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#92400e,#f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>💍</div>
+              <div>
+                <div className="fd" style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)" }}>Kattunayakan Matrimony</div>
+                <div className="ft" style={{ fontSize: 11, color: "var(--muted)" }}>காட்டுநாயக்கன் மக்கள் சமுதாயம்</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: "rgba(245,158,11,.28)", lineHeight: 1.7 }}>
+              All data is used solely for matrimony and community welfare purposes.<br />
+              © 2025 Kattunayakan Community Matrimony App
+            </p>
+            <button onClick={handleDownload} className="dlb fd" style={{ fontWeight: 700, borderRadius: 999, padding: "12px 28px", fontSize: 13 }}>
+              📲 Download APK
+            </button>
+          </div>
+        </footer>
+
+        {/* ══════════════ STICKY BOTTOM CTA (mobile) ══════════════ */}
+        <div className={`sticky-cta ${scrollY > 220 ? "visible" : ""}`}
+          style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: "rgba(11,7,0,.97)", borderTop: "1px solid rgba(245,158,11,.18)", backdropFilter: "blur(20px)", padding: "10px 16px", paddingBottom: "max(10px,env(safe-area-inset-bottom))" }}>
+          <button onClick={handleDownload} className="dlb glow" style={{ width: "100%", fontWeight: 700, borderRadius: 14, padding: "15px 20px", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            {downloading
+              ? <><span style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid #fff", borderTopColor: "transparent", animation: "spin .7s linear infinite", display: "inline-block" }} />Preparing…</>
+              : <>📲 Download Free APK</>}
+          </button>
         </div>
-        <p className="footer-copy">© 2025 Kattunayakan Matrimony · All rights reserved · Made with ❤ for the community</p>
-      </footer>
+
+      </div>
     </>
   );
 }
